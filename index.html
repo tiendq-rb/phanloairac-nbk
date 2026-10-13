@@ -4,22 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ thống AI Phân Loại Rác - THCS Nguyễn Bỉnh Khiêm</title>
-    <!-- Sử dụng Tailwind CSS cho giao diện đẹp mắt -->
+    <!-- Sử dụng Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 min-h-screen text-white font-sans">
 
     <!-- Header / Branding -->
-    <!-- Header / Branding -->
-<!-- Header / Branding -->
     <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 py-4 px-6 shadow-lg sticky top-0 z-50">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
-                <!-- Icon Rubik / Cube tượng trưng cho trí tuệ sáng tạo -->
-                <div class="bg-gradient-to-tr from-amber-500 via-emerald-500 to-cyan-500 p-3 rounded-xl shadow-md text-slate-950 font-black text-xl flex items-center justify-center w-12 h-12">
-                    <i class="fa-solid fa-cube"></i>
+                
+                <!-- Logo NBK RUBIK (Đã bo góc nền trắng nhẹ giúp logo hiển thị rõ nét trên nền tối) -->
+                <div class="bg-white p-1 rounded-xl shadow-md flex items-center justify-center w-12 h-12 overflow-hidden">
+                    <img src="logo.png" alt="Logo NBK Rubik" class="w-full h-full object-contain">
                 </div>
+
                 <div>
                     <h1 class="text-xl font-bold tracking-wider text-emerald-400">TRƯỜNG THCS NGUYỄN BỈNH KHIÊM</h1>
                     <p class="text-xs text-slate-400">Dự án Nghiên cứu Khoa học: Hệ thống AI Nhận diện Rác thải Thông minh</p>
@@ -42,7 +42,8 @@
             </h2>
             
             <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border-2 border-slate-700 shadow-inner">
-                <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
+                <!-- Cấu hình autoplay playsinline muted tối ưu camera di động -->
+                <video id="video" autoplay playsinline muted class="w-full h-full object-cover"></video>
                 <canvas id="canvas" class="hidden"></canvas>
             </div>
 
@@ -73,33 +74,49 @@
 
     </main>
 
-    <!-- Script xử lý Camera và gọi API -->
+    <!-- Script xử lý Camera và API -->
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const captureBtn = document.getElementById('capture-btn');
         const resultBox = document.getElementById('result-box');
 
-        // Bật Camera thiết bị
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-            .then(stream => { video.srcObject = stream; })
-            .catch(err => { alert("Không thể mở camera: " + err); });
+        // Khởi tạo camera hỗ trợ iOS/Android
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: { ideal: 'environment' } // Ưu tiên camera sau
+                    },
+                    audio: false
+                });
+                video.srcObject = stream;
+                await video.play();
+            } catch (err) {
+                alert("Không thể mở camera: " + err.message);
+            }
+        }
 
-        // Xử lý khi bấm nút quét
+        window.addEventListener('DOMContentLoaded', initCamera);
+
+        // Xử lý quét rác
         captureBtn.addEventListener('click', async () => {
+            if (!video.videoWidth || !video.videoHeight) {
+                alert("Camera chưa sẵn sàng!");
+                return;
+            }
+
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Hiệu ứng đang xử lý
             resultBox.innerHTML = `
                 <div class="bg-slate-900/80 border border-slate-700 p-6 rounded-xl text-center text-cyan-400 animate-pulse">
                     <i class="fa-solid fa-spinner fa-spin text-3xl mb-2"></i>
                     <p class="font-medium">AI đang phân tích mẫu rác...</p>
                 </div>`;
 
-            // Chuyển ảnh sang dạng Blob để gửi lên Backend
             canvas.toBlob(async (blob) => {
                 const formData = new FormData();
                 formData.append('file', blob, 'capture.jpg');
@@ -111,9 +128,9 @@
                     });
                     const data = await response.json();
 
-                    if (data.success && data.detections.length > 0) {
+                    if (data.status === "success" && data.predictions && data.predictions.length > 0) {
                         let html = '';
-                        data.detections.forEach(item => {
+                        data.predictions.forEach(item => {
                             html += `
                                 <div class="bg-slate-900/90 border-l-4 border-emerald-400 p-4 rounded-xl shadow-md space-y-2">
                                     <div class="flex justify-between items-center">
