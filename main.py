@@ -23,7 +23,7 @@ DISPOSAL_GUIDE = {
     "hazardous": "Rác nguy hại -> Mang đến điểm thu gom nguy hại của trường/địa phương."
 }
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory=".")
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
