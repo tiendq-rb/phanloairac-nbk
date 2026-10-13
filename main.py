@@ -1,66 +1,52 @@
 from fastapi import FastAPI, File, UploadFile
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from fastapi import Request
+from fastapi.responses import HTMLResponse, FileResponse
 from ultralytics import YOLO
 import cv2
 import numpy as np
-import io
-from PIL import Image
 
-app = FastAPI(title="AI Waste Classification - THCS Nguyễn Bỉnh Khiêm")
+app = FastAPI()
 
-
-# Tải mô hình YOLO đã huấn luyện từ thư mục runs
+# Tải mô hình YOLOv8
 model = YOLO("best.pt")
 
-# Từ điển hướng dẫn xử lý rác theo từng lớp (Bạn đổi tên class cho khớp với lúc train trên Roboflow)
-DISPOSAL_GUIDE = {
-    "organic": "Rác hữu cơ -> Bỏ vào thùng rác màu Xanh lá để làm phân compost.",
-    "recyclable": "Rác tái chế -> Làm sạch, khô và bỏ vào thùng màu Vàng/Xanh dương.",
+# Từ điển hướng dẫn phân loại
+waste_info = {
+    "organic": "Rác hữu cơ -> Bỏ vào thùng rác màu xanh lá.",
+    "recyclable": "Rác tái chế -> Làm sạch, khô và bỏ vào thùng màu vàng/xanh dương.",
     "non-recyclable": "Rác vô cơ khác -> Bỏ vào thùng rác sinh hoạt thông thường.",
-    "hazardous": "Rác nguy hại -> Mang đến điểm thu gom nguy hại của trường/địa phương."
+    "hazardous": "Rác nguy hại -> Mang đến điểm thu gom rác nguy hại của trường."
 }
 
-templates = Jinja2Templates(directory=".")
-
+# Route trang chủ: Trả về file index.html trực tiếp
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse(
-        name="index.html", 
-        context={"request": request}
-    )
+async def home():
+    return FileResponse("index.html")
 
+# Route nhận diện rác thải
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    # Đọc ảnh từ client gửi lên
-    image_bytes = await file.read()
-    image = Image.open(io.BytesIO(image_bytes))
-    img_np = np.array(image)
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    # Dự đoán bằng mô hình YOLOv8
+    results = model(img)
     
-    # Dự đoán bằng mô hình YOLO
-    results = model(img_np)
-    detections = []
-    
+    predictions = []
     for r in results:
-        boxes = r.boxes
-        for box in boxes:
+        for box in r.boxes:
             cls_id = int(box.cls[0])
-            conf = float(box.conf[0])
-            cls_name = model.names[cls_id]
+            label = model.names[cls_id]
+            confidence = float(box.conf[0])
+            guide = waste_info.get(label.lower(), "Bỏ vào đúng khu vực quy định.")
             
-            # Lấy hướng dẫn xử lý
-            guide = DISPOSAL_GUIDE.get(cls_name, "Bỏ vào đúng khu vực quy định.")
-            
-            detections.append({
-                "class": cls_name,
-                "confidence": round(conf * 100, 1),
+            predictions.append({
+                "class": label,
+                "confidence": round(confidence * 100, 1),
                 "guide": guide
             })
-            
-    return {"success": True, "detections": detections}
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    if not predictions:
+        return {"status": "success", "predictions": [{"class": "Không xác định", "confidence": 0, "guide": "Vui lòng đưa rác lại gần camera hơn."}]}
+
+    return {"status": "success", "predictions": predictions}
