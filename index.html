@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống AI Phân Loại Rác - THCS Nguyễn Bỉnh Khiêm</title>
+    <!-- Sử dụng Tailwind CSS cho giao diện đẹp mắt -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 min-h-screen text-white font-sans">
+
+    <!-- Header / Branding -->
+    <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 py-4 px-6 shadow-lg sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <!-- Icon Rubik / Cube tượng trưng cho trí tuệ sáng tạo -->
+                <div class="bg-gradient-to-tr from-amber-500 via-emerald-500 to-cyan-500 p-3 rounded-xl shadow-md text-slate-950 font-black text-xl flex items-center justify-center w-12 h-12">
+                    <i class="fa-solid fa-cube"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wider text-emerald-400">TRƯỜNG THCS NGUYỄN BỈNH KHIÊM</h1>
+                    <p class="text-xs text-slate-400">Dự án Nghiên cứu Khoa học: Hệ thống AI Nhận diện Rác thải Thông minh</p>
+                </div>
+            </div>
+            <div class="hidden md:flex items-center space-x-2 bg-slate-800 px-4 py-2 rounded-full border border-slate-700 text-sm">
+                <span class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
+                <span class="text-slate-300">Mô hình AI: YOLOv8 (Active)</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
+        
+        <!-- Cột Trái: Camera & Chụp ảnh -->
+        <div class="bg-slate-800/60 backdrop-blur border border-slate-700/80 p-6 rounded-2xl shadow-xl flex flex-col items-center">
+            <h2 class="text-lg font-semibold mb-4 text-amber-400 flex items-center gap-2">
+                <i class="fa-solid fa-camera"></i> Camera Nhận Diện Trực Tiếp
+            </h2>
+            
+            <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border-2 border-slate-700 shadow-inner">
+                <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
+                <canvas id="canvas" class="hidden"></canvas>
+            </div>
+
+            <button id="capture-btn" class="mt-5 w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-slate-950 font-bold py-3 px-6 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2 text-lg">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Quét & Phân Loại Rác
+            </button>
+        </div>
+
+        <!-- Cột Phải: Kết quả phân tích -->
+        <div class="bg-slate-800/60 backdrop-blur border border-slate-700/80 p-6 rounded-2xl shadow-xl flex flex-col justify-between">
+            <div>
+                <h2 class="text-lg font-semibold mb-4 text-cyan-400 flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-list"></i> Kết Quả Phân Tích & Hướng Dẫn
+                </h2>
+                
+                <div id="result-box" class="space-y-4">
+                    <div class="bg-slate-900/60 border border-slate-700 p-5 rounded-xl text-center text-slate-400">
+                        <i class="fa-solid fa-box-open text-4xl mb-2 text-slate-600"></i>
+                        <p>Chưa có dữ liệu quét. Hãy đưa rác trước camera và bấm nút <b>Quét & Phân Loại Rác</b>.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-700 text-xs text-slate-400 text-center">
+                Phát triển phục vụ nghiên cứu khoa học học sinh THCS Nguyễn Bỉnh Khiêm &copy; 2026
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Script xử lý Camera và gọi API -->
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture-btn');
+        const resultBox = document.getElementById('result-box');
+
+        // Bật Camera thiết bị
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => { alert("Không thể mở camera: " + err); });
+
+        // Xử lý khi bấm nút quét
+        captureBtn.addEventListener('click', async () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Hiệu ứng đang xử lý
+            resultBox.innerHTML = `
+                <div class="bg-slate-900/80 border border-slate-700 p-6 rounded-xl text-center text-cyan-400 animate-pulse">
+                    <i class="fa-solid fa-spinner fa-spin text-3xl mb-2"></i>
+                    <p class="font-medium">AI đang phân tích mẫu rác...</p>
+                </div>`;
+
+            // Chuyển ảnh sang dạng Blob để gửi lên Backend
+            canvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append('file', blob, 'capture.jpg');
+
+                try {
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+
+                    if (data.success && data.detections.length > 0) {
+                        let html = '';
+                        data.detections.forEach(item => {
+                            html += `
+                                <div class="bg-slate-900/90 border-l-4 border-emerald-400 p-4 rounded-xl shadow-md space-y-2">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-lg font-bold text-emerald-400 uppercase tracking-wide">${item.class}</span>
+                                        <span class="bg-emerald-950 text-emerald-300 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-800">Độ tin cậy: ${item.confidence}%</span>
+                                    </div>
+                                    <p class="text-sm text-slate-300"><i class="fa-solid fa-circle-info text-amber-400 mr-1"></i> ${item.guide}</p>
+                                </div>`;
+                        });
+                        resultBox.innerHTML = html;
+                    } else {
+                        resultBox.innerHTML = `
+                            <div class="bg-amber-950/40 border border-amber-700/60 p-4 rounded-xl text-center text-amber-300">
+                                <i class="fa-solid fa-triangle-exclamation text-2xl mb-1"></i>
+                                <p>Không nhận diện rõ loại rác. Hãy thử đổi góc chụp hoặc đưa lại gần camera hơn!</p>
+                            </div>`;
+                    }
+                } catch (error) {
+                    resultBox.innerHTML = `
+                        <div class="bg-red-950/40 border border-red-700/60 p-4 rounded-xl text-center text-red-300">
+                            <p>Lỗi kết nối tới máy chủ AI!</p>
+                        </div>`;
+                }
+            }, 'image/jpeg');
+        });
+    </script>
+</body>
+</html>
