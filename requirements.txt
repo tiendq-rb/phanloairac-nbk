@@ -1,0 +1,8 @@
+streamlit
+ultralytics
+opencv-python-headless
+pillow
+fastapi
+uvicorn
+jinja2
+python-multipart
