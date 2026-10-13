@@ -27,7 +27,10 @@ templates = Jinja2Templates(directory=".")
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request, "index.html", {})
+    return templates.TemplateResponse(
+        name="index.html", 
+        context={"request": request}
+    )
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
